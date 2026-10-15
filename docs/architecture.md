@@ -25,6 +25,14 @@ The GUI and installer moved from WatchCat's localization-patcher into this stand
 
 Windows resolves the LocalAppData known folder with package redirection disabled instead of trusting a host's environment override. `paladinscat-launcher-cli --data-dir` prints the requested location without creating files. Windows can still virtualize file operations inherited from a packaged development host; CPU checks in that host recorded the effective cache path separately. Normal unpackaged use retains the existing patcher's settings location. This lookup does not claim to escape an MSIX container.
 
+CLI `--dry-run GAME_ROOT` and `--launch GAME_ROOT` accept optional
+`--cache-root EXISTING_DIRECTORY` for performance imports and `launch-logs`.
+The explicit root is canonicalized and must already be a directory; links,
+reparse points (including parent components), duplicate options and missing
+values are refused. Its position relative to `--performance MANIFEST` does not
+matter. Omitting it keeps the default data directory and existing cache ownership
+and cleanup checks.
+
 ## Launch
 
 Game-folder detection runs on a separate background worker, independently of
