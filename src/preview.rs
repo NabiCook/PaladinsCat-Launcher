@@ -30,6 +30,28 @@ pub fn render(
         app.receiver = Some(receiver);
     }
     app.tab = tab;
+    if tab == super::PackageTab::Mods {
+        app.settings.game_folder = "C:\\Games\\Paladins".into();
+        app.mods_folder = app.settings.game_folder.clone();
+        app.mods = Ok(vec![
+            super::mods::ModInfo {
+                id: "example-mod".into(),
+                name: "Example Tempest mod".into(),
+                version: "1.0.0".into(),
+                author: "Example author".into(),
+                kind: "V2".into(),
+                enabled: true,
+            },
+            super::mods::ModInfo {
+                id: "disabled-example".into(),
+                name: "Disabled mod".into(),
+                version: "1.0.0".into(),
+                author: "Example author".into(),
+                kind: "V2".into(),
+                enabled: false,
+            },
+        ]);
+    }
     if let Some(language) = language {
         app.settings.ui_language = language;
     }

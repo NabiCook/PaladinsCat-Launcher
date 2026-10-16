@@ -4,6 +4,7 @@ pub mod game_discovery;
 pub mod graphics_policy;
 pub mod ime;
 pub mod launch;
+pub mod mods;
 pub mod performance;
 pub mod self_update;
 pub mod sources;

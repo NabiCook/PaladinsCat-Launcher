@@ -29,7 +29,13 @@ records and the catalog without opening a desktop window or saving settings.
 read-only JSON. Discovery tests use Steam/Epic/Tempest fixtures, including legacy
 Steam libraries, moved/missing installs, duplicate paths and delayed UI results.
 
-`assets/paladinscat.png` supplies both the native window icon and the generated Windows executable icon. The build wraps the original PNG in an ICO under Cargo's output directory; do not maintain a second logo asset. `verify_icon` reads the compiled PE icon as data and compares it with the original PNG without starting the launcher.
+`--preview-mods OUTPUT.png` and `--preview-mods-kor OUTPUT.png` render the Mods
+page with owned synthetic registry rows, without inspecting or modifying a game.
+Mod imports and Enable/Disable/Remove actions use the fixtures described in
+[Tempest mods](docs/tempest-mods.md), including file restoration, shared INI
+entries, external-edit conflicts, transactional deletion rollback and row clicks.
+
+`assets/paladinscat.png` supplies both the native window icon and the generated Windows executable icon. The build wraps the original PNG in an ICO under Cargo's output directory; do not maintain a second logo asset. `verify_icon` reads the compiled PE as data, requires Windows GUI subsystem 2, and compares its icon with the original PNG without starting the launcher. Both debug and release GUI builds use this subsystem; use the separate CLI binary for console workflows. Verify the exact EXE before delivering it for testing.
 
 Do not commit downloaded packages, generated binaries, recordings, credentials or game files. Review and pin immutable package manifests and payload hashes before updating a release. Preserve existing game receipts and cache paths when changing product names. Keep launch selection distinct from verified runtime hook activation. No successful dry-run, build or CPU preview proves gameplay compatibility or performance.
 

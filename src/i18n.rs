@@ -74,6 +74,40 @@ impl UiLanguage {
 
 // Reviewable exact strings: (English source, initial Korean translation).
 const KOREAN: &[(&str, &str)] = &[
+    ("Mods", "모드"),
+    ("Tempest mods", "Tempest 모드"),
+    ("Add mod…", "모드 추가…"),
+    ("Mod added", "모드 추가됨"),
+    ("Mod enabled", "모드 활성화됨"),
+    ("Mod disabled", "모드 비활성화됨"),
+    ("Mod removed", "모드 삭제됨"),
+    ("Enable", "활성화"),
+    ("Disable", "비활성화"),
+    ("Remove", "삭제"),
+    ("Actions", "관리"),
+    (
+        "Manage in Localization or Performance",
+        "번역 또는 성능 탭에서 관리",
+    ),
+    ("Mods refreshed", "모드 새로고침됨"),
+    ("Recovered", "복구됨"),
+    ("Recover mods", "모드 복구"),
+    ("Replace existing game files", "기존 게임 파일 교체"),
+    ("Allow unverified DLL mods", "미검증 DLL 모드 허용"),
+    (
+        "Select a game folder to manage mods",
+        "모드를 관리할 게임 경로를 선택하세요",
+    ),
+    ("No installed mods", "설치된 모드 없음"),
+    (
+        "Unable to read installed mods",
+        "설치된 모드를 불러올 수 없음",
+    ),
+    ("Name", "이름"),
+    ("Version", "버전"),
+    ("Author", "제작자"),
+    ("Status", "상태"),
+    ("Enabled", "활성화됨"),
     (
         "Developer launch requires its original restart procedure",
         "개발용 실행은 기존 절차로 재시작하세요",

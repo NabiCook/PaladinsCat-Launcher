@@ -1,4 +1,4 @@
-//! CPU-only packaged-icon check. Map PE resources as data, never execute the GUI.
+//! CPU-only GUI-subsystem/icon check. Read PE data, never execute the GUI.
 #[cfg(windows)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::{ffi::c_void, os::windows::ffi::OsStrExt};
@@ -41,6 +41,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args_os()
         .nth(1)
         .ok_or("Pass a built launcher EXE")?;
+    let bytes = std::fs::read(&path)?;
+    let pe = bytes.get(0x3c..0x40).ok_or("Missing DOS header")?;
+    let pe = u32::from_le_bytes(pe.try_into()?) as usize;
+    if bytes.get(..2) != Some(b"MZ")
+        || bytes.get(pe..pe.saturating_add(4)) != Some(b"PE\0\0")
+        || bytes.get(pe.saturating_add(92)..pe.saturating_add(94)) != Some(&[2, 0])
+    {
+        return Err("Launcher must use the Windows GUI subsystem (2), never console (3)".into());
+    }
     let path: Vec<u16> = path.encode_wide().chain([0]).collect();
     // LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE: no entry point.
     let module = unsafe { LoadLibraryExW(path.as_ptr(), std::ptr::null_mut(), 0x22) };
@@ -59,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Executable icon differs from the existing PaladinsCat logo".into());
     }
     println!(
-        "PaladinsCat executable icon verified: exact source PNG, {} bytes; CPU-only",
+        "PaladinsCat GUI subsystem 2 and icon verified: exact source PNG, {} bytes; CPU-only",
         payload.len()
     );
     Ok(())

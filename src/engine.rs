@@ -833,6 +833,17 @@ fn available_bytes(root: &Path) -> Result<u64> {
     }
 }
 pub(crate) fn acquire(root: &Path, running: &dyn Fn() -> bool) -> Result<(PathBuf, File)> {
+    let acquired = acquire_for_mod_recovery(root, running)?;
+    if crate::mods::recovery_pending(&acquired.0) {
+        return Err("Recover the interrupted mod import first".into());
+    }
+    Ok(acquired)
+}
+
+pub(crate) fn acquire_for_mod_recovery(
+    root: &Path,
+    running: &dyn Fn() -> bool,
+) -> Result<(PathBuf, File)> {
     if running() {
         return Err("Close Paladins before changing game files".into());
     }

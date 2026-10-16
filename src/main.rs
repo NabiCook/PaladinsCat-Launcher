@@ -1,13 +1,14 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod graphics_device;
 mod i18n;
 mod language_menu;
+mod mod_ui;
 mod preview;
 mod vm_renderer;
 use i18n::UiLanguage;
 use paladinscat_launcher::{
-    cache, engine, game_discovery, ime, launch, performance, self_update, sources,
+    cache, engine, game_discovery, ime, launch, mods, performance, self_update, sources,
 };
 use sources::{LOCALE_REPOSITORY as REPOSITORY, catalog_url};
 
@@ -84,6 +85,7 @@ enum Event {
     Completion(std::result::Result<Work, String>, Option<String>),
 }
 enum Work {
+    Mods(String, Vec<mods::ModInfo>, &'static str),
     Startup(Startup),
     Catalog(engine::Catalog),
     Package(Box<Cached>),
@@ -154,6 +156,7 @@ impl Settings {
 }
 #[derive(Clone, Copy, PartialEq)]
 enum PackageTab {
+    Mods,
     Translation,
     // Korean-only child of Localization, never a top-level menu option.
     Ime,
@@ -210,6 +213,10 @@ impl ImeInstallState {
     }
 }
 struct App {
+    mods: engine::Result<Vec<mods::ModInfo>>,
+    mods_folder: String,
+    replace_mod_files: bool,
+    allow_native_mods: bool,
     settings: Settings,
     discovered_games: Vec<game_discovery::Installation>,
     discovery: Option<Receiver<GameDiscovery>>,
@@ -347,6 +354,10 @@ impl App {
             Settings::load()
         };
         let mut app = Self {
+            mods: Ok(Vec::new()),
+            mods_folder: String::new(),
+            replace_mod_files: false,
+            allow_native_mods: false,
             settings,
             discovered_games: Vec::new(),
             discovery: None,
@@ -536,6 +547,7 @@ impl App {
         }
     }
     fn refresh_installed(&mut self) {
+        self.refresh_mods();
         if self.settings.game_folder.is_empty() {
             self.installed = "No game folder selected".into();
             self.ime_installed = ImeInstallState::NoGame;
@@ -678,6 +690,13 @@ impl App {
                             } else {
                                 failures.join("; ")
                             };
+                        }
+                        Ok(Work::Mods(folder, entries, status)) => {
+                            if folder == self.settings.game_folder {
+                                self.mods_folder = folder;
+                                self.mods = Ok(entries);
+                            }
+                            self.status = status.into();
                         }
                         Ok(Work::Catalog(catalog)) => {
                             self.accept_catalog(catalog);
@@ -951,6 +970,13 @@ impl App {
         response
     }
     fn tab_source(&self, tab: PackageTab) -> (String, String, String) {
+        if tab == PackageTab::Mods {
+            return (
+                sources::LAUNCHER_REPOSITORY.into(),
+                sources::LAUNCHER_RELEASE_API.into(),
+                "Local mods".into(),
+            );
+        }
         if tab == PackageTab::Performance {
             let version = self
                 .performance_selected
@@ -980,7 +1006,7 @@ impl App {
             let (count, kind) = match tab {
                 PackageTab::Translation => (self.releases.len(), "localization"),
                 PackageTab::Ime => (self.ime_releases.len(), "IME"),
-                PackageTab::Performance => unreachable!(),
+                PackageTab::Performance | PackageTab::Mods => unreachable!(),
             };
             if count == 0 {
                 format!("Connected · no {kind} packages published")
@@ -996,6 +1022,21 @@ impl App {
         (self.settings.repository.clone(), self.source_url(), status)
     }
     fn repository_panel(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, busy: bool) {
+        if self.tab == PackageTab::Mods {
+            if self.error || !self.status_parts.is_empty() {
+                egui::CollapsingHeader::new(self.settings.ui_language.text("Diagnostics"))
+                    .id_salt("mods-diagnostics")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        ui.add(
+                            egui::Label::new(self.presented_status(self.settings.ui_language))
+                                .wrap()
+                                .selectable(true),
+                        );
+                    });
+            }
+            return;
+        }
         let language = self.settings.ui_language;
         let (repository, source, status) = self.tab_source(self.tab);
         let id = ui.make_persistent_id("bottom-repository-details");
@@ -1185,6 +1226,12 @@ impl App {
             "Game started" => "Game started",
             "Launch requested" => "Launch requested",
             "Catalog refreshed" => "Refreshed",
+            "Mods refreshed" => "Refreshed",
+            "Mod added" => "Mod added",
+            "Mod enabled" => "Mod enabled",
+            "Mod disabled" => "Mod disabled",
+            "Mod removed" => "Mod removed",
+            "Mods recovered" => "Recovered",
             "Downloads cleared" => "Downloads cleared",
             "Package downloaded/imported and verified. Ready to apply."
             | "IME package verified. Ready to apply."
@@ -1244,9 +1291,11 @@ impl App {
                     );
                 });
             });
-        egui::Panel::bottom("repository-details")
-            .frame(egui::Frame::new().fill(BG).inner_margin(12))
-            .show(root_ui, |ui| self.repository_panel(ui, ctx, busy));
+        if self.tab != PackageTab::Mods || self.error || !self.status_parts.is_empty() {
+            egui::Panel::bottom("repository-details")
+                .frame(egui::Frame::new().fill(BG).inner_margin(12))
+                .show(root_ui, |ui| self.repository_panel(ui, ctx, busy));
+        }
         egui::CentralPanel::default().show(root_ui, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 card().show(ui, |ui| {
@@ -1432,15 +1481,16 @@ impl App {
                         );
                         if ui
                             .selectable_label(
-                                self.tab != PackageTab::Performance,
+                                matches!(self.tab, PackageTab::Translation | PackageTab::Ime),
                                 language.text("Localization"),
                             )
                             .clicked()
-                            && self.tab == PackageTab::Performance
+                            && !matches!(self.tab, PackageTab::Translation | PackageTab::Ime)
                         {
                             self.tab = PackageTab::Translation;
                         }
-                        if self.tab != PackageTab::Performance {
+                        ui.selectable_value(&mut self.tab, PackageTab::Mods, language.text("Mods"));
+                        if matches!(self.tab, PackageTab::Translation | PackageTab::Ime) {
                             ui.add_space(12.);
                             ui.add_enabled_ui(!busy, |ui| {
                                 ui.horizontal(|ui| {
@@ -1475,7 +1525,7 @@ impl App {
                         }
                     });
                 });
-                if self.tab != PackageTab::Performance {
+                if matches!(self.tab, PackageTab::Translation | PackageTab::Ime) {
                     self.reconcile_navigation();
                     if self.korean_ime_available() {
                         ui.horizontal(|ui| {
@@ -1494,6 +1544,9 @@ impl App {
                     }
                 }
                 ui.add_space(12.);
+                if self.tab == PackageTab::Mods {
+                    self.mods_panel(ui, ctx, busy);
+                }
                 if self.tab == PackageTab::Translation {
                     card().show(ui, |ui| {
                         ui.set_min_width(ui.available_width());
@@ -1944,6 +1997,8 @@ fn main() -> eframe::Result<()> {
                 | "--preview-details-kor"
                 | "--preview-update"
                 | "--preview-update-kor"
+                | "--preview-mods"
+                | "--preview-mods-kor"
         )
     {
         preview::render(
@@ -1954,6 +2009,8 @@ fn main() -> eframe::Result<()> {
                 || args[1].contains("-update")
             {
                 PackageTab::Performance
+            } else if args[1].contains("-mods") {
+                PackageTab::Mods
             } else if args[1].contains("-ime") {
                 PackageTab::Ime
             } else {
@@ -2025,6 +2082,183 @@ fn main() -> eframe::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mods_page_has_localized_import_and_actual_registry_rows_without_other_package_controls() {
+        for language in [UiLanguage::English, UiLanguage::Korean] {
+            let ctx = egui::Context::default();
+            let mut app = App::new(&ctx, true);
+            app.settings.ui_language = language;
+            app.tab = PackageTab::Mods;
+            app.settings.game_folder = "C:\\Owned fixture\\Paladins".into();
+            app.mods_folder = app.settings.game_folder.clone();
+            app.mods = Ok(vec![mods::ModInfo {
+                id: "fixture".into(),
+                name: "Fixture mod".into(),
+                version: "1.2.3".into(),
+                author: "Fixture author".into(),
+                kind: "V2".into(),
+                enabled: true,
+            }]);
+            let settings = serde_json::to_value(&app.settings).unwrap();
+            let text = rendered_text(&mut app, &ctx);
+            for label in [
+                "Tempest mods",
+                "Add mod…",
+                "Name",
+                "Version",
+                "Author",
+                "Status",
+                "Enabled",
+                "Disable",
+                "Remove",
+                "Actions",
+            ] {
+                assert!(
+                    text.contains(&language.text(label)),
+                    "Missing {label}: {text}"
+                );
+            }
+            assert!(text.contains("Fixture mod") && text.contains("1.2.3"));
+            assert!(!text.contains(&language.text("Translation package")));
+            assert!(!text.contains(&language.text("Performance mod")));
+            assert!(!text.contains(&language.text("Repository settings")));
+            assert!(!app.allow_native_mods && !app.replace_mod_files);
+            assert_eq!(serde_json::to_value(&app.settings).unwrap(), settings);
+            fn visible(shape: &egui::Shape, clip: egui::Rect, needle: &str) -> Option<bool> {
+                match shape {
+                    egui::Shape::Text(text) if text.galley.text() == needle => Some(
+                        clip.contains_rect(egui::Rect::from_min_size(text.pos, text.galley.size())),
+                    ),
+                    egui::Shape::Vec(shapes) => {
+                        shapes.iter().find_map(|shape| visible(shape, clip, needle))
+                    }
+                    _ => None,
+                }
+            }
+            let mut row_visible = false;
+            for _ in 0..3 {
+                let frame = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(DEFAULT_WINDOW_SIZE[0], DEFAULT_WINDOW_SIZE[1]),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| app.render(ui),
+                );
+                row_visible = [
+                    "Fixture mod".to_owned(),
+                    language.text("Disable"),
+                    language.text("Remove"),
+                ]
+                .iter()
+                .all(|needle| {
+                    frame
+                        .shapes
+                        .iter()
+                        .find_map(|shape| visible(&shape.shape, shape.clip_rect, needle))
+                        .unwrap_or(false)
+                });
+            }
+            assert!(
+                row_visible,
+                "The first installed mod must be visible at the default window size"
+            );
+        }
+    }
+
+    #[test]
+    fn late_mod_listing_does_not_replace_another_game_selection_and_import_status_stays_short() {
+        let ctx = egui::Context::default();
+        let mut app = App::new(&ctx, true);
+        app.settings.game_folder = "C:\\current".into();
+        let (tx, rx) = mpsc::channel();
+        tx.send(Event::Done(Ok(Work::Mods(
+            "C:\\former".into(),
+            Vec::new(),
+            "Mods refreshed",
+        ))))
+        .unwrap();
+        app.receiver = Some(rx);
+        app.receive();
+        assert_ne!(app.mods_folder, "C:\\former");
+        for status in ["Mod added", "Mod enabled", "Mod disabled", "Mod removed"] {
+            app.status = status.into();
+            assert_eq!(app.concise_status(), status);
+        }
+        app.status = "native import path and diagnostic details".into();
+        app.error = true;
+        assert_eq!(app.concise_status(), "Operation failed");
+    }
+
+    #[test]
+    fn mod_row_controls_dispatch_actions_and_managed_or_busy_rows_are_inert() {
+        for language in [UiLanguage::English, UiLanguage::Korean] {
+            for (enabled, label) in [(true, "Disable"), (false, "Enable"), (true, "Remove")] {
+                let ctx = egui::Context::default();
+                let mut app = App::new(&ctx, true);
+                app.settings.ui_language = language;
+                app.tab = PackageTab::Mods;
+                // Safe worker-dispatch failure; no installed game is touched.
+                app.settings.game_folder = "C:\\PaladinsCat-nonexistent-control-fixture".into();
+                app.mods_folder = app.settings.game_folder.clone();
+                app.mods = Ok(vec![mods::ModInfo {
+                    id: "fixture".into(),
+                    name: "Fixture".into(),
+                    version: "1".into(),
+                    author: "Author".into(),
+                    kind: "V2".into(),
+                    enabled,
+                }]);
+                let positions = rendered_text_positions(&mut app, &ctx);
+                let point = positions
+                    .iter()
+                    .find(|(text, _)| *text == language.text(label))
+                    .expect("row action")
+                    .1
+                    .center();
+                click_at_point(&mut app, &ctx, point);
+                let event = app
+                    .receiver
+                    .as_ref()
+                    .expect("Action started shared worker")
+                    .recv_timeout(std::time::Duration::from_secs(5))
+                    .unwrap();
+                assert!(matches!(event, Event::Completion(Err(_), _)));
+                app.receiver = None;
+
+                app.mods.as_mut().unwrap()[0].id = "paladinscat-ime".into();
+                let positions = rendered_text_positions(&mut app, &ctx);
+                let point = positions
+                    .iter()
+                    .find(|(text, _)| *text == language.text(label))
+                    .unwrap()
+                    .1
+                    .center();
+                click_at_point(&mut app, &ctx, point);
+                assert!(
+                    app.receiver.is_none(),
+                    "Managed mods use their own controls"
+                );
+
+                app.mods.as_mut().unwrap()[0].id = "fixture".into();
+                let (sender, receiver) = mpsc::channel();
+                app.receiver = Some(receiver);
+                let positions = rendered_text_positions(&mut app, &ctx);
+                let point = positions
+                    .iter()
+                    .find(|(text, _)| *text == language.text(label))
+                    .unwrap()
+                    .1
+                    .center();
+                click_at_point(&mut app, &ctx, point);
+                assert!(app.receiver.as_ref().unwrap().try_recv().is_err());
+                drop(sender);
+            }
+        }
+    }
 
     #[test]
     fn self_update_header_stays_compact_and_never_changes_game_settings() {
@@ -3335,6 +3569,7 @@ mod tests {
                 PackageTab::Translation => "prepared_translation",
                 PackageTab::Ime => "prepared_ime",
                 PackageTab::Performance => "prepared_performance",
+                PackageTab::Mods => unreachable!(),
             }] = serde_json::json!("");
             let (sender, receiver) = mpsc::channel();
             sender

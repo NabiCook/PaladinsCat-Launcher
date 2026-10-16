@@ -27,6 +27,15 @@ Use **Restore originals** to revert localization. Disable performance for the ne
 
 The launcher starts the validated Windows x64 game executable and loads enabled DLLs directly. No Tempest installation is required. Existing Tempest-compatible profile and enabled-mod settings are retained.
 
+Open **Mods** to see the selected game's installed Tempest mods, versions,
+authors and enabled states. **Add mod…** imports `.tempest`/`.zip` V2 packages
+or legacy `.upk`/`.pck` files while Paladins is closed. File replacement and
+unverified DLL imports each require their corresponding option. Existing registry
+entries and original-file backups are preserved. See [mod imports](docs/tempest-mods.md).
+Each mod row has **Enable/Disable** and **Remove** controls. Disabling restores
+original game files and keeps the mod ready to enable again; removing also clears
+its saved files and registry entry.
+
 Local builds and check records are separate from an approved release. See
 [CONTRIBUTING.md](CONTRIBUTING.md#artifact-format-and-release-version-control)
 for EXE delivery and release version control.

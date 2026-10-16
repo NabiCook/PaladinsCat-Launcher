@@ -110,6 +110,7 @@ fn source_path(path: &str) -> bool {
             | "docs/architecture.md"
             | "docs/package-versions.md"
             | "docs/self-update.md"
+            | "docs/tempest-mods.md"
             | "docs/release-0.3.8.md"
             | "docs/dependency-sources.json"
             | "docs/replay-profiles.md"

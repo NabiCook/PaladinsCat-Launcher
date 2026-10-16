@@ -32,6 +32,19 @@ pub(crate) fn prepared_cleanup(result: Result<()>) {
     }
 }
 
+pub(crate) fn cleanup_warning(message: String) {
+    CLEANUP_WARNING.with(|warning| *warning.borrow_mut() = Some(message));
+}
+
+/// Callers must prove ownership before requesting recoverable transaction cleanup.
+pub(crate) fn recycle_owned(root: &Path, paths: &[PathBuf]) -> Result<()> {
+    let root = root.canonicalize().map_err(|e| e.to_string())?;
+    for path in paths {
+        validate_tree(&root, path)?;
+    }
+    recycle(&root, paths)
+}
+
 pub(crate) struct Lease {
     _file: File,
 }

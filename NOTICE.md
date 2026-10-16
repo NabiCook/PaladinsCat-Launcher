@@ -2,6 +2,12 @@
 
 ## Tempest
 
+Mod import/registry and INI-patch contracts were reviewed in `ModFormatDetector.cs`,
+`ModRecord.cs`, `ModV1Installer.cs`, `ModV2Installer.cs`, `IniPatcher.cs`,
+`ModCommands.cs` and `TempestPathUtility.cs` at Tempest revision
+`01081efe3cd966dbc8f84822640b10f12f3f4158`. They are adapted into independent Rust
+imports with bounded archive reads, path/ownership checks and a recovery journal.
+
 Fork source: https://github.com/LowRezStudio/Tempest
 
 Copyright (C) 2025-2026 LowRezStudio contributors.

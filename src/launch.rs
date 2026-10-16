@@ -328,6 +328,9 @@ fn plan_with(
 ) -> engine::Result<Plan> {
     validate_profile(options)?;
     let root = options.game_root.canonicalize().map_err(error)?;
+    if crate::mods::recovery_pending(&root) {
+        return Err("Recover the interrupted mod import before launching".into());
+    }
     for folder in ["Binaries", "Engine", "ChaosGame"] {
         if !root.join(folder).is_dir() {
             return Err("Select the game root containing Binaries, Engine and ChaosGame".into());
@@ -440,7 +443,7 @@ struct TempestMod {
     owned_files: Vec<PathBuf>,
 }
 
-fn mod_id(id: &str) -> bool {
+pub(crate) fn mod_id(id: &str) -> bool {
     !id.is_empty()
         && id.len() <= 128
         && id
@@ -448,7 +451,7 @@ fn mod_id(id: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || b"-_".contains(&c))
 }
 
-fn family(value: &str) -> bool {
+pub(crate) fn family(value: &str) -> bool {
     let name: String = value
         .chars()
         .filter(|c| c.is_ascii_alphanumeric())
@@ -1356,6 +1359,90 @@ mod tests {
             f.plan(&[])
                 .unwrap_err()
                 .contains("Conflicting native DLL owner")
+        );
+    }
+
+    #[test]
+    fn imported_tempest_dll_enters_the_existing_plan_once_and_pending_recovery_blocks_play() {
+        use std::io::Write;
+        let f = Fixture::new();
+        let package = f.home.join("fixture.tempest");
+        let mut dll = vec![0u8; 128];
+        dll[..2].copy_from_slice(b"MZ");
+        dll[0x3c..0x40].copy_from_slice(&64u32.to_le_bytes());
+        dll[64..70].copy_from_slice(b"PE\0\0\x64\x86");
+        dll[88..90].copy_from_slice(&[0x0b, 0x02]);
+        let mut zip = zip::ZipWriter::new(fs::File::create(&package).unwrap());
+        for (name, bytes) in [
+            (
+                "manifest.toml",
+                b"[mod]\nid='fixture-native'\nname='Fixture native'\n".as_slice(),
+            ),
+            ("dlls/fixture.dll", dll.as_slice()),
+        ] {
+            zip.start_file(name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(bytes).unwrap();
+        }
+        zip.finish().unwrap();
+        crate::mods::import_with(&f.options.game_root, &package, false, true, &|| false, None)
+            .unwrap();
+        let planned = f.plan(&[]).unwrap();
+        assert_eq!(
+            planned.dlls,
+            vec![
+                f.options
+                    .game_root
+                    .join(".tempest/v2/mods/fixture-native/dlls/fixture.dll")
+                    .canonicalize()
+                    .unwrap()
+            ]
+        );
+        crate::mods::change_with(
+            &f.options.game_root,
+            "fixture-native",
+            Some(false),
+            &|| false,
+            None,
+        )
+        .unwrap();
+        assert!(f.plan(&[]).unwrap().dlls.is_empty());
+        assert!(!crate::mods::list(&f.options.game_root).unwrap()[0].enabled);
+        crate::mods::change_with(
+            &f.options.game_root,
+            "fixture-native",
+            Some(true),
+            &|| false,
+            None,
+        )
+        .unwrap();
+        assert_eq!(f.plan(&[]).unwrap().dlls.len(), 1);
+        crate::mods::change_with(
+            &f.options.game_root,
+            "fixture-native",
+            None,
+            &|| false,
+            None,
+        )
+        .unwrap();
+        assert!(f.plan(&[]).unwrap().dlls.is_empty());
+        assert!(crate::mods::list(&f.options.game_root).unwrap().is_empty());
+        assert!(
+            !f.options
+                .game_root
+                .join(".tempest/v2/mods/fixture-native")
+                .exists()
+        );
+        let pending = f
+            .options
+            .game_root
+            .join(".tempest/paladinscat-mod-transaction");
+        fs::create_dir_all(&pending).unwrap();
+        fs::write(pending.join("journal.json"), b"{}").unwrap();
+        assert!(
+            f.plan(&[])
+                .unwrap_err()
+                .contains("Recover the interrupted mod")
         );
     }
 
