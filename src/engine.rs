@@ -165,7 +165,7 @@ struct ActiveFile {
 }
 
 pub fn data_dir() -> PathBuf {
-    local_app_data().join("PaladinsCat").join("Localization")
+    local_app_data().join("PaladinsCat").join("Launcher")
 }
 #[cfg(windows)]
 fn local_app_data() -> PathBuf {
