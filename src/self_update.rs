@@ -703,8 +703,8 @@ mod tests {
         }
         for url in [
             "https://example.com/launcher.exe",
-            "http://github.com/PaladinsCat/PaladinsCat-Launcher/releases/download/v0.3.9/paladinscat-launcher.exe",
-            "https://github.com/PaladinsCat/PaladinsCat-locales/releases/download/v0.3.9/paladinscat-launcher.exe",
+            "http://github.com/NabiCook/PaladinsCat-Launcher/releases/download/v0.3.9/paladinscat-launcher.exe",
+            "https://github.com/NabiCook/PaladinsCat-locales/releases/download/v0.3.9/paladinscat-launcher.exe",
         ] {
             let mut changed = valid.clone();
             changed["assets"][0]["browser_download_url"] = url.into();

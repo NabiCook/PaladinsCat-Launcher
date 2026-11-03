@@ -501,7 +501,7 @@ fn catalog_supports_independent_ime_releases_and_legacy_catalogs() {
     assert!(old.ime_packages.is_empty());
     let value = serde_json::json!({"schema_version":1,"packages":[],"ime_packages":[{
         "package_id":"paladinscat-ime-0-1-0","version":"0.1.0","game_build":"8.1",
-        "manifest_url":"https://github.com/PaladinsCat/PaladinsCat-locales/releases/download/ime-0.1.0/ime-package.json",
+        "manifest_url":"https://github.com/NabiCook/PaladinsCat-locales/releases/download/ime-0.1.0/ime-package.json",
         "manifest_sha256":"a".repeat(64)
     }]});
     let (base, worker) = server(
@@ -528,9 +528,18 @@ fn server(
             socket
                 .set_read_timeout(Some(Duration::from_secs(5)))
                 .unwrap();
-            let mut request = [0; 4096];
-            let count = socket.read(&mut request).unwrap();
-            let text = String::from_utf8_lossy(&request[..count]);
+            let mut request = Vec::new();
+            while !request.windows(4).any(|part| part == b"\r\n\r\n") {
+                let mut buffer = [0; 1024];
+                let count = socket.read(&mut buffer).unwrap();
+                assert!(count > 0, "fixture request ended before its headers");
+                request.extend_from_slice(&buffer[..count]);
+                assert!(
+                    request.len() <= 8192,
+                    "fixture request headers exceed limit"
+                );
+            }
+            let text = String::from_utf8_lossy(&request);
             let path = text.split_whitespace().nth(1).unwrap();
             let bytes = routes.get(path).unwrap();
             write!(
