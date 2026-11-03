@@ -1,6 +1,6 @@
 # PaladinsCat Launcher
 
-[Download the launcher EXE](https://github.com/PaladinsCat/PaladinsCat-Launcher/releases/latest/download/paladinscat-launcher.exe).
+[Download the launcher EXE](https://github.com/NabiCook/PaladinsCat-Launcher/releases/latest/download/paladinscat-launcher.exe).
 Run it directly; no extraction is required.
 
 ## Use
@@ -21,8 +21,8 @@ download, verify and restart it. Settings and game files are preserved. The
 previous EXE is restored if startup fails, then temporary files are cleared after
 successful recovery. See [self-update](docs/self-update.md) for release requirements.
 
-Localization packages come from [PaladinsCat-locales](https://github.com/PaladinsCat/PaladinsCat-locales).
-Performance packages come from [PaladinsCat-mods](https://github.com/PaladinsCat/PaladinsCat-mods).
+Localization packages come from [PaladinsCat-locales](https://github.com/NabiCook/PaladinsCat-locales).
+Performance packages come from [PaladinsCat-mods](https://github.com/NabiCook/PaladinsCat-mods).
 Use **Restore originals** to revert localization. Disable performance for the next launch, or select its retained input version. Close the game before changing installed IME files.
 
 The launcher starts the validated Windows x64 game executable and loads enabled DLLs directly. No Tempest installation is required. Existing Tempest-compatible profile and enabled-mod settings are retained.

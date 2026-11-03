@@ -1,11 +1,11 @@
 [package]
 name = "paladinscat-launcher"
-version = "0.3.10"
+version = "0.3.11"
 edition = "2024"
 default-run = "paladinscat-launcher"
 publish = false
 license = "GPL-3.0-or-later"
-repository = "https://github.com/PaladinsCat/PaladinsCat-Launcher"
+repository = "https://github.com/NabiCook/PaladinsCat-Launcher"
 description = "PaladinsCat Launcher"
 
 [dependencies]

@@ -579,7 +579,7 @@ fn prepare_inner(
         let catalog_artifact = artifact(&output.join("catalog.json"))?;
         let manifest = serde_json::json!({
             "schema_version":2,"product":"PaladinsCat Launcher","version":version,"platform":"windows-x64",
-            "source_commit":commit,"source_url":format!("https://github.com/PaladinsCat/PaladinsCat-Launcher/tree/{commit}"),
+            "source_commit":commit,"source_url":format!("https://github.com/NabiCook/PaladinsCat-Launcher/tree/{commit}"),
             "executables":binaries,"corresponding_source":corresponding,"dependency_sources":vendor.len(),
             "self_update":{"repository":paladinscat_launcher::sources::LAUNCHER_REPOSITORY,"tag":format!("v{version}"),"asset":paladinscat_launcher::self_update::EXE,"required_github_digest":"sha256"},
             "dependencies_complete":true,"catalog":catalog_artifact,"catalog_entries":serde_json::from_slice::<serde_json::Value>(catalog).map_err(|e|e.to_string())?,

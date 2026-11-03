@@ -141,16 +141,19 @@ impl Startup {
 }
 impl Settings {
     fn load() -> Self {
-        std::fs::read(engine::data_dir().join("settings.json"))
+        let mut settings: Self = std::fs::read(engine::data_dir().join("settings.json"))
             .ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        settings.repository = sources::canonical_repository(&settings.repository).into();
+        settings.catalog_url = sources::canonical_source_url(&settings.catalog_url);
+        settings
     }
     fn source_url(&self) -> String {
         if self.catalog_url.trim().is_empty() {
             catalog_url(&self.repository)
         } else {
-            self.catalog_url.trim().into()
+            sources::canonical_source_url(&self.catalog_url)
         }
     }
 }
@@ -2399,7 +2402,7 @@ mod tests {
 
     #[test]
     fn legacy_patcher_settings_preserve_selected_packages_without_enabling_new_mods() {
-        let settings: Settings = serde_json::from_str(r#"{"game_folder":"C:/Paladins","repository":"PaladinsCat/PaladinsCat-locales","catalog_url":"","prepared_translation":"bundle.json","prepared_ime":"ime-package.json"}"#).unwrap();
+        let settings: Settings = serde_json::from_str(r#"{"game_folder":"C:/Paladins","repository":"NabiCook/PaladinsCat-locales","catalog_url":"","prepared_translation":"bundle.json","prepared_ime":"ime-package.json"}"#).unwrap();
         assert_eq!(settings.prepared_translation, "bundle.json");
         assert_eq!(settings.prepared_ime, "ime-package.json");
         assert!(!settings.performance_enabled);
@@ -2547,7 +2550,7 @@ mod tests {
     #[test]
     fn configured_catalog_is_used_with_repository_link_retained() {
         let mut settings = Settings {
-            catalog_url: "https://github.com/PaladinsCat/PaladinsCat-locales/releases/download/preview/catalog.json".into(),
+            catalog_url: "https://github.com/NabiCook/PaladinsCat-locales/releases/download/preview/catalog.json".into(),
             ..Settings::default()
         };
         assert_eq!(settings.source_url(), settings.catalog_url);
@@ -2601,10 +2604,10 @@ mod tests {
     fn catalog_fixture(translation: bool, ime: bool) -> engine::Catalog {
         let mut value = serde_json::json!({"schema_version":1,"packages":[],"ime_packages":[]});
         if translation {
-            value["packages"] = serde_json::json!([{"bundle_id":"kor-fixture","locale":"KOR","game_build":"8.1","manifest_url":"https://github.com/PaladinsCat/PaladinsCat-locales/releases/download/fixture/locale-package.json","manifest_sha256":"a".repeat(64)}]);
+            value["packages"] = serde_json::json!([{"bundle_id":"kor-fixture","locale":"KOR","game_build":"8.1","manifest_url":"https://github.com/NabiCook/PaladinsCat-locales/releases/download/fixture/locale-package.json","manifest_sha256":"a".repeat(64)}]);
         }
         if ime {
-            value["ime_packages"] = serde_json::json!([{"package_id":"ime-fixture","version":"0.1.0","game_build":"8.1","manifest_url":"https://github.com/PaladinsCat/PaladinsCat-locales/releases/download/fixture/ime-package.json","manifest_sha256":"b".repeat(64)}]);
+            value["ime_packages"] = serde_json::json!([{"package_id":"ime-fixture","version":"0.1.0","game_build":"8.1","manifest_url":"https://github.com/NabiCook/PaladinsCat-locales/releases/download/fixture/ime-package.json","manifest_sha256":"b".repeat(64)}]);
         }
         engine::parse_catalog(&serde_json::to_vec(&value).unwrap()).unwrap()
     }

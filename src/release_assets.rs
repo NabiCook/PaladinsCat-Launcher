@@ -236,8 +236,8 @@ mod tests {
 
     #[test]
     fn locale_publication_preserves_independent_ime() {
-        let original = serde_json::json!({"schema_version":1,"packages":[],"ime_packages":[{"package_id":"ime-existing","version":"0.1.0","game_build":"8.1","manifest_url":"https://github.com/PaladinsCat/PaladinsCat-locales/releases/download/old/ime-package.json","manifest_sha256":"a".repeat(64),"notes":"unchanged"}]});
-        let release = engine::Release {bundle_id:"kor-ui-v174".into(),locale:"KOR".into(),game_build:"8.1".into(),manifest_url:"https://github.com/PaladinsCat/PaladinsCat-locales/releases/download/new/locale-package.json".into(),manifest_sha256:"b".repeat(64),notes:"PREVIEW · Korean v174.".into()};
+        let original = serde_json::json!({"schema_version":1,"packages":[],"ime_packages":[{"package_id":"ime-existing","version":"0.1.0","game_build":"8.1","manifest_url":"https://github.com/NabiCook/PaladinsCat-locales/releases/download/old/ime-package.json","manifest_sha256":"a".repeat(64),"notes":"unchanged"}]});
+        let release = engine::Release {bundle_id:"kor-ui-v174".into(),locale:"KOR".into(),game_build:"8.1".into(),manifest_url:"https://github.com/NabiCook/PaladinsCat-locales/releases/download/new/locale-package.json".into(),manifest_sha256:"b".repeat(64),notes:"PREVIEW · Korean v174.".into()};
         let updated =
             update_locale_catalog(&serde_json::to_vec(&original).unwrap(), release).unwrap();
         assert_eq!(updated["ime_packages"], original["ime_packages"]);

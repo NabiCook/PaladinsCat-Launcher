@@ -1,7 +1,7 @@
 # Standalone launcher updates
 
 The small version button in the header checks this launcher's own
-[stable releases](https://github.com/PaladinsCat/PaladinsCat-Launcher/releases).
+[stable releases](https://github.com/NabiCook/PaladinsCat-Launcher/releases).
 A background check runs once at startup; selecting the version checks again.
 When a newer version exists, **Update v…** downloads and restarts the launcher.
 Updates require that click; they do not interrupt a running package operation.
@@ -17,7 +17,7 @@ or installer prerequisite.
 ## Release contract and trust
 
 The fixed endpoint is the GitHub REST API
-`repos/PaladinsCat/PaladinsCat-Launcher/releases/latest`, independent of the
+`repos/NabiCook/PaladinsCat-Launcher/releases/latest`, independent of the
 editable localization repo/catalog. No token or browser session is needed.
 GitHub documents the [stable latest-release endpoint](https://docs.github.com/en/rest/releases/releases#get-the-latest-release)
 and [asset SHA-256 digest](https://docs.github.com/en/rest/releases/assets#get-a-release-asset).
